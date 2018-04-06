@@ -1,0 +1,292 @@
+---
+title: "Tutorial"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+## Introduction
+
+In this chapter we will discuss deriving new variables which are needed for analysis. In the GSBPM this is done during the Process phase of the model. After data is collected and before analysis begins. 
+
+For our examples in this chapter we will use a small sample (n=25) of the household recode dataset from the DHS model data availabe from USAID (https://www.dhsprogram.com/data/Download-Model-Datasets.cfm). The original data is much larger, having  7,654 columns and 6290 observations. The data represents the  
+
+## The rename and mutate functions
+
+The dplyr library is a workhorse for new variable creation. It contains many useful functions for changing datasets such as the rename and mutate functions.  The rename function deos just what its name implies, it renames variables. The mutate function computes a new variable based on exisitng variabless and adds it to a dataset with one compact easy to read statement. There are other ways to add and rename variables in a dataset, but others are not as straighford to read as the dplyr functions. Using the dplyr library will make is easier when you look back at your old code, so be nice to future you are learn to use dplyr. 
+
+We will start with a simple example which renames the variables `hv010` and `hv011` to `eligible_female` and `eligilbe_male`, respectively. The mutate function is then used to create a new variable, `eligible_total` which is the sum of `eligible_female` and `elibible_male`. Both functions use the same syntax, the first input into the function is the dataset, the next are the alterations you want to perform. Each alteration is separated by a comma.  In the statement `rename(HR_top, elgigble_female = hv010, eligible_male = hv011)`, `HR_top` is the dataset, the first alteration (`elgigble_female = hv010`) renames `hv010` to `elgigble_female`, and the second alteration (`eligible_male = hv011`) renames `hv011` to `eligible_male`.
+
+
+```{r mutate-data, exercise=TRUE, exercise.lines = 7}
+library(tidyverse)
+load(file="HR_top.RData")
+HR_top = rename(HR_top, elgigble_female = hv010, eligible_male = hv011)
+HR_top = mutate(HR_top, elgigble_total = elgigble_female +  eligible_male)
+HR_top
+```
+
+Now practice using the mutate and rename functions yourself. Write r code to rename the variables `hv012`, `hv013` and `hv014` to `dejure_total`, `defacto_total` and `dejure_5_and_under`, respectively. Then create a new variable, `dejure_over5` which is the number of dejure residents over the age of 5.  
+
+The Data Wrangling cheat sheet is a useful reference for this excercise. It contains many useful functions from dplyr library.
+
+```{r mutate-data2, exercise=TRUE, exercise.lines = 7}
+
+```
+
+
+## Advanced mutate functions
+
+As we saw in the last excercise, mutate can make use of arithmetic operations ( +, - , *, /, etc. ) to make new values. In addition to these operators we can call on functions such as pmax(), pmin() or log() within the mutate statement. In the example below we calculate a new variable the dejure_defacto_max which selects the maximum value of dejure_total and defacto_total for each observation.    
+
+```{r mutate-data3, exercise=TRUE, exercise.lines = 7}
+library(tidyverse)
+load(file="HR_top.RData")
+HR_top = rename(HR_top, dejure_total = hv012, defacto_total = hv013)
+HR_top = mutate(HR_top, dejure_defacto_max = pmax(dejure_total,defacto_total))
+HR_top
+```
+
+
+
+```{r letter-a, echo=FALSE}
+question("In the prior excercise, change the function pmax to max and rerun the code. What is the value of dejure_defacto_max?",
+  answer("dejure_defacto_max is equal to maximum value of dejure_total and defacto_total for each observation"),
+  answer("dejure_defacto_max is equal to dejure_total for each observation"),
+  answer("dejure_defacto_max is equal to defacto_total for each observation"),
+  answer("dejure_defacto_max is equal to maximum value of dejure_total and defacto_total for all observations", correct = TRUE)
+)
+```
+
+If you want to make a new varaialbe that is more complicated and cannot be written as a one simple statement, one method is to combine The mutate function with a user defined function. As an example, you want to create a new varaible which divides respondent ages into the following six groups: "less than 5", "6 - 10", "11 - 20", "21 - 30", "31 - 40", and "over 40". It will take several statements to make the assigment. In the code below, first a user function called `age_group` is defined, then  this function is called from inside the mutate statement. The result is a new variable `hh_age_code` that contains the age codes for the head of household. 
+
+```{r mutate-data4, exercise=TRUE, exercise.lines = 20}
+age_group <- function(age){
+  group = rep("",length(age))
+  group[age<6] = "less than 5"
+  group[age>=6 & age<11] <- "6 - 10"
+  group[age>=11 & age<21] <- "11 - 20" 
+  group[age>=21 & age<31] <- "21 - 30" 
+  group[age>=31 & age<41] <- "31 - 40" 
+  group[age>=41] <- "over 40" 
+  return(group)
+}
+
+library(tidyverse)
+
+HR_top = rename(HR_top, hh_age = hv220)
+HR_top = mutate(HR_top , hh_age_code = age_group(hh_age))
+HR_top$hh_age_code
+```
+
+Change the R code so that there are eight age groups instead of six. The new age groups are as follows: "less than 5", "6 - 15", "16 - 25", "26 - 35", "36 - 45", "46 - 55", "56 - 65" and "over 65".  
+
+```{r mutate-data5, exercise=TRUE, exercise.lines = 20}
+
+```
+
+The combinaltion of user defined function and mutate has several advantages. The mutate code is still readable and compact and the new function can be used in other places in your code. 
+
+## Using pipe notation (%>%)
+
+The pipe notation allows us to join several steps into a compact and readable format. In base R if you want to combine two statements you use functional notation. IF you remember back to you mathematics instruction, this means that you read from the inside out. In the last code block you executed a rename followed by a mutate. This was done in two steps and each step was stored into the HR_top variable. To combine these two statements you put the rename function inside the mutate function. The code below shows two equivelent blocks of r code.
+
+```{r pipe1, exercise=TRUE, exercise.lines = 20}
+# two statements 
+HR_top = rename(HR_top, hh_age = hv220)
+HR_top = mutate(HR_top , hh_age_code = age_group(hh_age))
+
+#combined into one statement
+HR_top = mutate(HR_top , hh_age_code = age_group(rename(HR_top, hh_age = hv220)))
+
+```
+
+Pipe allows us a another way to combine statements which is read left to write just as English text is read. The example below does the same thing as the prior statements. You will notice that the name of the dataset (`HR_top`) has been removed from as a parameter of the mutate and rename functions, placed out front and connected with a pipe.
+
+```{r pipe2, exercise=TRUE, exercise.lines = 20}
+# two statements 
+HR_top = HR_top %>% rename(hh_age = hv220) %>% mutate(hh_age_code = age_group(hh_age))
+```
+
+When you are looking as a block of code you can replace the pipe (%>%) with the word "*then*". The statement above can be read as, take the HR_top dataset, *then* rename the variable hv220 to hh_age, *then* create a new variable HH_age_code. Pipe notation is not mandatory and if you have written code for many years with functional notation it may not be a natural change. You should be aware of the pipe because a lot of example code you find uses this notation.  
+
+## Selecting and filtering data
+
+Both select and filter make your dataset smaller. Select by removing columns and filter by removing rows. Used in combination they can help you narrow down your dataset to just the items of interest. 
+
+The syntax of select allows you to specifiy either the columns you want to keep or those you want to remove. To specify what you want to retain, simply list the column names you are keeping. In the code below the 3 columns that are being kept (elgigble_female, eligible_male, under5) are listed in the select statement. The resulting dataset contains only these 3 columns. 
+
+
+```{r select1, exercise=TRUE, exercise.lines = 20}
+selected_HR = HR_top %>% rename(elgigble_female = hv010, eligible_male = hv011, under5 = hv014) %>%
+  select(elgigble_female, eligible_male, under5)
+
+```
+
+
+To specify which columns will be remove put a minus sign in front of the column name. 
+
+```{r select2, exercise=TRUE, exercise.lines = 20}
+negative_selected_HR = HR_top %>% rename(elgigble_female = hv010, eligible_male = hv011, under5 = hv014) %>%
+  select(-elgigble_female, -eligible_male, -under5)
+
+```
+
+```{r letter-a, echo=FALSE}
+question("After running the code block above how many columns are there in the negative_selected_HR dataset?",
+  answer("7561"),
+  answer("7551", correct = TRUE),
+  answer("7657"),
+  answer("7552")
+)
+```
+
+There are some some helper functions for select that save you the effort of making a long list of variable names when working with large datasets. I couple of the most useful are 
+
+* starts_with("Petal")
+
+* ends_with("Width")
+
+For a full list of Helper functions see the Data Wrangling cheat sheet.
+
+
+The filter function operates on observation values to determine which rows to retain. Any row in the data which is meets the condition of the fitler is retained. For example, if you want to do analysis on large housholds the condition for the filter would be number of household members is greater and three.
+
+```{r select3, exercise=TRUE, exercise.lines = 20}
+filter_HR = HR_top %>% rename(HH_number = hv009) %>%
+  filter(HH_number > 3)
+
+```
+
+Try out the filter function and create a filter to keep all household except thos with 5 members.
+
+```{r select3, exercise=TRUE, exercise.lines = 20}
+filter_HR = HR_top %>% rename(HH_number = hv009) %>%
+  filter(HH_number > 3)
+
+```
+
+For help building more complex logic into a fiter refer to the talbe of logic operators on the Data Wrangling cheat sheet.
+
+With a combination of select and filter you can remove unwanted rows and columns in your dataset and focus in on the observations required for your analysis.
+
+## Reshaping data
+
+The same dataset can be stored with observations as a series of columns or as series of columns. These Often refered to as wide and narrow datasets.  As a general rule narrow data is more flexible and useful format for analysis, but as with any rule there are many exceptions. Often data is collected in wide foramts and must be resahped into narrow format before analysis.
+
+An example of wide data are the 90 columns hv105_01, hv105_02, ... to hv105_90 which contain data from up to 90 household members. Each column stores the age for one member of the household. If we want to calcuate the average age of the household we will have a much easier time if the data is stored in a narrow format with one row for each household member. 
+
+To reshape the data from wide to narrow use the gather function. The columns being gathered become row of data, so you need to specify 2 new column names one will hold the gathered columns and the other the values. The other input the function requires is which columns to gather togther. In the example you want to gather the columns which start with hv105. The new column names are `member_id` and `member_age`. To speficy the columns to gather the helper function `starts_with("")` is used. 
+
+
+```{r reshape1, exercise=TRUE, exercise.lines = 20}
+gathered_HR = HR_top %>% 
+  select(hhid,starts_with("hv105_")) %>%
+  gather("member_id","member_age",starts_with("hv105_"))
+View(gathered_HR)
+```
+
+
+To practice reshaping data, Write R code to select, gather, and filter the HR_top dataset as follows. Select the HR_top data set to include only hhid and the 90 columns which specify the relationship of each household memeber to the head of the household (hv101_01, hv101_02, ... , hv101_90), gather the hv101 columns, filter to remove the rows containing NAs.  
+  
+```{r reshape2, exercise=TRUE, exercise.lines = 10}
+
+
+```
+
+
+The opposite of gathering rows is spreading them. The code below summarizes the average number of minutes spent fetching water by the source of the water source and the location of the household. The result is a summary table with three columns and many rows stating the average number of minutes for each combination of categories. 
+
+```{r reshape2, exercise=TRUE, exercise.lines = 10}
+HR_sample %>% 
+  transmute(source_h20 = as_factor(hv201), minutes_fetch_h20 = hv204, urban_rural = as_factor(hv025)) %>%
+  filter(minutes_fetch_h20 < 900) %>%
+  group_by(lsource_h20, urban_rural) %>%
+  summarise(avg_min = mean(minutes_fetch_h20))
+```
+
+
+Spread can be used in this situation to make a wider table which is easier for to read. One of the categories is converted into columns. In the example below the location of the houshold is converted into columns. The result is a table with fewer rows that makes it easier to compare values. It is easy to quickly scan the table and see that in all categories except one urban households spend more time fetching water.  
+
+```{r reshape2, exercise=TRUE, exercise.lines = 10}
+HR_sample %>% 
+  transmute(lsource_h20 = as_factor(hv201), minutes_fetch_h20 = hv204, urban_rural = as_factor(hv025)) %>%
+  filter(minutes_fetch_h20 < 900) %>%
+  group_by(lsource_h20, urban_rural) %>%
+  summarise(avg_min = mean(minutes_fetch_h20)) %>%
+  spread(urban_rural, avg_min)
+```
+
+The complementery functions gather and spread help you to quickly reshape data. There are additional reshaping functions which allow data to be shaped, separated, and combined. These functions are collected and expalined on the Data Wrangling cheat sheet. 
+
+  
+## Working with stings 
+
+When reshaping data character data can present an extra challenge. The `stringr` package within `tidyverse` was written to provide a toolkit for working with character strings. The definition of character strings is a group of characters surrounded by quotation marks. Common string functions include dececting matches, checking the length, changing strings, and combining or splitting strings. 
+
+The `stringr` functions all a similar structure. The first parameter is the string and the second parameter is a pattern. Some functions have additional parameters which are needed to complete the action. For example, the `str_detect` function detects the presence of a pattern in a string. The code block below uses 'str_detect` to determine with which variable labels in the HR_top dataset have `mosquito` in their labels.
+
+There are 7654 variables in the HR_top dataset, so looking through them one by one will be a tedious job. First a HR_vars dataframe is created and filled with the variable names and labels from the HR_top dataset, then the str_detect(HR_vars[,2], "age")  
+
+```{r string1, exercise=TRUE, exercise.lines = 10}
+HR_vars <- data.frame(var=names(HR_top)[1:7654],
+                 label=rep('',7654), 
+                 stringsAsFactors=FALSE) 
+for (i in 1:7654) {HR_vars$label[i] = attributes(HR_top[[i]])$label}
+
+filter(HR_vars,str_detect(HR_vars$label, "mosquito"))
+
+```
+
+
+```{r letter-a, echo=FALSE}
+question("How many variable contain the word hemoglobin in the HR_top dataset?",
+  answer("103"),
+  answer("2"),
+  answer("131"),
+  answer("331", correct = TRUE)
+)
+```
+
+If you recall the age data which we gathered in the reshape section, the result was a variable containing the column name `hv105_??`. To make the data more useful and allow us to match a users age to their other data, we want a column with the household member number alone (the number after hv105_). We will do this by aseparating the member_id column into 2 at the "_" character. The function used is `separate`. The first parameter is the string to be split, the the column names that will result, and finally the pattern to indicate the location of the split. After separating we convert the member_id from a character to a string.
+
+
+```{r reshape1, exercise=TRUE, exercise.lines = 20}
+#recall the data
+gathered_HR = HR_top %>% 
+  select(hhid,starts_with("hv105_")) %>%
+  gather("member_id","member_age",starts_with("hv105_")) %>%
+  filter(!is.na(member_age))
+View(gathered_HR)
+```
+
+```{r reshape1, exercise=TRUE, exercise.lines = 20}
+gathered_HR = HR_top %>% 
+  select(hhid,starts_with("hv105_")) %>%
+  gather("member_id","member_age",starts_with("hv105_")) %>%
+  filter(!is.na(member_age)) %>%
+  #separate(member_id, c("var","member_id"), "_") %>%
+  #mutate(member_id = as.numeric(member_id)) %>%
+  arrange(hhid,member_id)
+View(gathered_HR)
+```
+
+
+In order to work with string you need to understand how patern matching is done. So far the patterns we have matched have been very simple match for a single character ("_") or string ("mosquito") in a string. What if you only want to match strings that begin with mosquito? or you want to split on either "_" or "-"? For more complex matches you need to understand regular expressions. Regular expressions use a short hand to describe the string you want to match. The symbols `^` and `$` mean start and end of a string respectively. So the pattern "^mosquito" will only match strings that begin with mosquito and "mosquito$" will only match strings which end with mosquito. The brackets `[]` match any of the characters inside, so the pattern "[_-]"  means match either "_" or "-". These symbols can be combined to make complex matching patterns like the pattern "^[Mm]osquito" which will match to strings starting with "Mosquito" or "mostquito". Regular expressions are understood by many programs beyond R. For an extensive list of regular expression syntax see the working with strings with stringr cheat sheet. 
+
+
+Strings have their own set of functions, helper functions and pattern matching syntax. The Working strings with stringr cheat sheet document many of these functions.  
+
+
+## Times and dates
+
+## Coding into groups
+
+## summary
+
+case when (avoid many dead kittens)
