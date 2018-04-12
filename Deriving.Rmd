@@ -165,7 +165,7 @@ filter_HR = HR_top %>% rename(HH_number = hv009) %>%
 
 Try out the filter function and create a filter to keep all household except thos with 5 members.
 
-```{r select3, exercise=TRUE, exercise.lines = 20}
+```{r select4, exercise=TRUE, exercise.lines = 20}
 filter_HR = HR_top %>% rename(HH_number = hv009) %>%
   filter(HH_number > 3)
 
@@ -202,7 +202,7 @@ To practice reshaping data, Write R code to select, gather, and filter the HR_to
 
 The opposite of gathering rows is spreading them. The code below summarizes the average number of minutes spent fetching water by the source of the water source and the location of the household. The result is a summary table with three columns and many rows stating the average number of minutes for each combination of categories. 
 
-```{r reshape2, exercise=TRUE, exercise.lines = 10}
+```{r reshape3, exercise=TRUE, exercise.lines = 10}
 HR_sample %>% 
   transmute(source_h20 = as_factor(hv201), minutes_fetch_h20 = hv204, urban_rural = as_factor(hv025)) %>%
   filter(minutes_fetch_h20 < 900) %>%
@@ -213,7 +213,7 @@ HR_sample %>%
 
 Spread can be used in this situation to make a wider table which is easier for to read. One of the categories is converted into columns. In the example below the location of the houshold is converted into columns. The result is a table with fewer rows that makes it easier to compare values. It is easy to quickly scan the table and see that in all categories except one urban households spend more time fetching water.  
 
-```{r reshape2, exercise=TRUE, exercise.lines = 10}
+```{r reshape4, exercise=TRUE, exercise.lines = 10}
 HR_sample %>% 
   transmute(lsource_h20 = as_factor(hv201), minutes_fetch_h20 = hv204, urban_rural = as_factor(hv025)) %>%
   filter(minutes_fetch_h20 < 900) %>%
@@ -253,10 +253,10 @@ question("How many variable contain the word hemoglobin in the HR_top dataset?",
 )
 ```
 
-If you recall the age data which we gathered in the reshape section, the result was a variable containing the column name `hv105_??`. To make the data more useful and allow us to match a users age to their other data, we want a column with the household member number alone (the number after hv105_). We will do this by aseparating the member_id column into 2 at the "_" character. The function used is `separate`. The first parameter is the string to be split, the the column names that will result, and finally the pattern to indicate the location of the split. After separating we convert the member_id from a character to a string.
+If you recall the age data which we gathered in the reshape section, the result was a variable containing the column name `hv105_??`. To make the data more useful and allow us to match a users age to their other data, we want a column with the household member number alone (the number after hv105_). We will do this by separating the member_id column into 2 at the "_" character. The function used is `separate`. The first parameter is the string to be split, the the column names that will result, and finally the pattern to indicate the location of the split. After separating we convert the member_id from a character to a string.
 
 
-```{r reshape1, exercise=TRUE, exercise.lines = 20}
+```{r string2, exercise=TRUE, exercise.lines = 20}
 #recall the data
 gathered_HR = HR_top %>% 
   select(hhid,starts_with("hv105_")) %>%
@@ -265,13 +265,13 @@ gathered_HR = HR_top %>%
 View(gathered_HR)
 ```
 
-```{r reshape1, exercise=TRUE, exercise.lines = 20}
+```{r string3, exercise=TRUE, exercise.lines = 20}
 gathered_HR = HR_top %>% 
   select(hhid,starts_with("hv105_")) %>%
   gather("member_id","member_age",starts_with("hv105_")) %>%
   filter(!is.na(member_age)) %>%
-  #separate(member_id, c("var","member_id"), "_") %>%
-  #mutate(member_id = as.numeric(member_id)) %>%
+  separate(member_id, c("var","member_id"), "_") %>%
+  mutate(member_id = as.numeric(member_id)) %>%
   arrange(hhid,member_id)
 View(gathered_HR)
 ```
@@ -283,10 +283,92 @@ In order to work with string you need to understand how patern matching is done.
 Strings have their own set of functions, helper functions and pattern matching syntax. The Working strings with stringr cheat sheet document many of these functions.  
 
 
-## Times and dates
+## Dates
+
+When preparing data for analysis dates have to be manipulated. The lubrudate package which is a part of tidyverse is a toolkit for working with dates and times. Lubrudate offers functions for doing math with dates and convert dates between different formats.
+
+There are two objects underly lubridates funcionality, dates and spans.  The first task when working with a data from collection to to ensure that R understands that it is a date and correctly records the point in time. There are many ways to represent a single date. For example, if you are given the data 12-01-04, is this the 12th day of January 2004, or the 4th day of January 20012, or maybe the 1st day of December 1904? We will use a subset of the HR_top dataset called HR_top_child_age. This dataset contains one row for each child and the interview data, the birthdate, and the age of the child. The birthdate is recorded in three columns, day of birth (`birth_day`), month of birth (`birth_mnth`) and year of birth(`birth_yr`). The R code below combines these three columns into one date column (`birth_dt`). Two functions work together to create the `birth_dt` variable, str_c and ymd. The inner function, str_c, acts first and joins the three fields together with a `/` separator between them. The outer function, ymd, acts next and converts the string into a date with the understanding that the data is presented in the order year, month, day.  
+
+```{r date1, exercise=TRUE, exercise.lines = 20}
+library(lubridate)
+library(tidyverse)
+
+load("HR_top_child_age.RData")
+HR_top_child_age = HR_top_child_age %>% 
+  mutate(birth_dt = ymd(str_c(HR_top_child_age$birth_yr,HR_top_child_age$birth_mnth,HR_top_child_age$birth_day,sep="/")))
+View(HR_top_child_age)
+```
+
+Looking at the newly created field `birth_dt` you will notice that two of the values are NAs. When you rand the code there was an error that "2 failed to parse". Take a look at the source data and determine why this occured. Rewrite the code block to remove the error.
+
+```{r date2, exercise=TRUE, exercise.lines = 20}
+library(lubridate)
+library(tidyverse)
+
+load("HR_top_child_age.RData")
+HR_top_child_age = HR_top_child_age %>% 
+  mutate(birth_dt = ymd(str_c(HR_top_child_age$birth_yr,HR_top_child_age$birth_mnth,HR_top_child_age$birth_day,sep="/")))
+View(HR_top_child_age)
+```
+
+Next we will tackle a slightly more difficult date converstion. The interview date (`interview_date_cmc`) is stored in the  Century Month Code format. The DHS manual (https://dhsprogram.com/pubs/pdf/DHSG4/Recode6_DHS_22March2013_DHSG4.pdf) explains that this is the number of months since January 1900. The code block below adds the number of months in the CMC date to December 1st 1899 to calculate the date of the interview.  
+
+```{r date3, exercise=TRUE, exercise.lines = 20}
+library(lubridate)
+library(tidyverse)
+
+HR_top_child_age = HR_top_child_age %>% 
+  mutate(interview_dt = ymd("18991201") + months(HR_top_child_age$interview_date_cmc))
+View(HR_top_child_age)
+```
+
+The final date calculation we will perform is to calculate the age of these children on the interview date to confirm that their parents have answered the age question `age` correctly. The age is stored in the `age_calc` variable. 
+
+
+```{r date3, exercise=TRUE, exercise.lines = 20}
+library(lubridate)
+library(tidyverse)
+
+HR_top_child_age = HR_top_child_age %>% 
+  mutate(age_calc = as.duration(HR_top_child_age$interview_dt-HR_top_child_age$birth_dt))
+View(HR_top_child_age)
+```
+
+It is good news that the recorded ages match our calculations. 
+
+In this section the we have looked at several examples of date math. We have Converted dates from thier collected formats into R date formats and then calculated durations. The Dates and times with lubridate cheat sheet outlines these date functions and many others. These inclused time functions and the ability to convert between time zones.   
 
 ## Coding into groups
 
+In the advanced mutate section we created a function named age_group that converted the age variable into a number of age groups. If you have programmed in other languages you maybe tempted to write this function as a series of if, then, else statements. You will run into problems if you give in to this temptation. This is because R and especially the tidyverse functions operate on varibles within a dataframe as vectors and if statements falls apart on a vectors. One way to solve this is to build a loop with takes each element of the vector and then performs this if statement. Be aware that using loops slows down your code and on large dataset can bring things to a crawl. 
+
+There is a better answer thanks to Hadley Wickham the author of tidyverse and most of the handy functions we have seen in this chapter. The case_when is like an giant if, then, else if that works on vectors. This is better than our earlier funciton where we made an exhaustive list of all the possible cases because we can be sure we have not missed any possiliites by catch all cases that have not been coded at the bottom of our case_if statement. In the code block below the age_group function is rewritten with case_when. Each case is evaluated in order and once a match is found and a value assigned evaluation stops, because of this feature the check for the group "6 - 10" is shortened from age>=6 & age<11 to just age < 11. The final condition TRUE functions as an else statement. 
+
+```{r mutate-data4, exercise=TRUE, exercise.lines = 20}
+age_group <- function(age){
+group =  case_when(
+  age < 6 ~ "less than 5",
+  age < 11 ~ "6 - 10",
+  age < 21 ~ "11 - 20",
+  age < 31 ~ "21 - 30",
+  age < 41 ~ "31 - 40",
+  TRUE ~ "over 40"
+)
+  return(group)
+}
+
+library(tidyverse)
+
+HR_top = rename(HR_top, hh_age = hv220)
+HR_top = mutate(HR_top , hh_age_code = age_group(hh_age))
+HR_top$hh_age_code
+```
+
+The case_when offers a compact and easy to read method for coding variables into groups. 
+
 ## summary
 
-case when (avoid many dead kittens)
+This chapter has intorduced a set of tools for deriving new variables and preparing data for analysis with tidyverse. The tidyverse packages take some of the pain out of working with base r by introducing functions with longer and more memorable names and getting away from functional notation with the introduction of pipes. The result is code which is easier to read,  share, and maintain.  
+
+
+
